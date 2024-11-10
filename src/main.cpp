@@ -14,9 +14,8 @@ const int MARGIN_RIGHT = 10;
 const int MARGIN_TOP = 16;
 const int MARGIN_BOTTOM = 16;
 const int BORDER_WIDTH = 2; // Width of the border in pixels
-const char *PROMPT = "> ";
 
-// Terminal dimensions will be calculated in setup
+// Terminal dimensions calculated in setup
 int TERM_ROWS = 0;
 int TERM_COLS = 0;
 
@@ -34,16 +33,13 @@ FontProperties props = {
 
 void drawBorder()
 {
-    // Calculate terminal area
     int term_x = MARGIN_LEFT - BORDER_WIDTH;
     int term_y = MARGIN_TOP - BORDER_WIDTH;
     int term_width = EPD_WIDTH - (MARGIN_LEFT + MARGIN_RIGHT) + (2 * BORDER_WIDTH);
     int term_height = EPD_HEIGHT - (MARGIN_TOP + MARGIN_BOTTOM) + (2 * BORDER_WIDTH);
 
-    // Draw border using rectangle
     epd_draw_rect(term_x, term_y, term_width, term_height, 0, framebuffer);
 
-    // Draw inner border
     if (BORDER_WIDTH > 1)
     {
         epd_draw_rect(term_x + 1, term_y + 1, term_width - 2, term_height - 2, 0, framebuffer);
@@ -52,11 +48,9 @@ void drawBorder()
 
 void calculateTerminalDimensions()
 {
-    // Calculate rows (accounting for margins)
     int usable_height = EPD_HEIGHT - (MARGIN_TOP + MARGIN_BOTTOM);
     TERM_ROWS = usable_height / LINE_HEIGHT;
 
-    // Calculate columns
     int32_t cursor_x = 0;
     int32_t cursor_y = 0;
     int32_t x1 = 0, y1 = 0, w = 0, h = 0;
@@ -68,7 +62,6 @@ void calculateTerminalDimensions()
     int usable_width = EPD_WIDTH - (MARGIN_LEFT + MARGIN_RIGHT);
     TERM_COLS = usable_width / char_width;
 
-    // Debug info
     Serial.println("\nE-Paper Terminal Debug Info:");
     Serial.println("----------------------------");
     Serial.printf("Display dimensions: %dx%d pixels\n", EPD_WIDTH, EPD_HEIGHT);
@@ -76,7 +69,6 @@ void calculateTerminalDimensions()
     Serial.printf("Line height: %d pixels\n", LINE_HEIGHT);
     Serial.printf("Usable area: %dx%d pixels (with margins)\n", usable_width, usable_height);
     Serial.printf("Terminal size: %d columns x %d rows\n", TERM_COLS, TERM_ROWS);
-    Serial.printf("Prompt length: %d characters\n", strlen(PROMPT));
     Serial.println("----------------------------\n");
 }
 
@@ -100,7 +92,7 @@ void clearScreen()
     epd_draw_grayscale_image(epd_full_screen(), framebuffer);
     epd_clear();
     currentLine = 0;
-    drawBorder(); // Redraw border after clearing
+    drawBorder();
 }
 
 void scrollScreen()
@@ -127,37 +119,25 @@ void scrollScreen()
     }
 
     free(tempBuffer);
-    drawBorder(); // Redraw border after scrolling
+    drawBorder();
     epd_draw_grayscale_image(epd_full_screen(), framebuffer);
     currentLine--;
 }
 
-void writeLine(const char *text, bool showPrompt = true)
+void writeLine(const char *text)
 {
-    // Calculate basic position
     int32_t cursor_x = MARGIN_LEFT;
 
-    // Get font metrics
     int32_t x1 = 0, y1 = 0, w = 0, h = 0;
     get_text_bounds((GFXfont *)&ComicCode, "Mg", &cursor_x, &y1,
                     &x1, &y1, &w, &h, &props);
 
-    // Calculate baseline position
-    // LINE_HEIGHT is 16, font height is h, we want to center it
     int32_t cursor_y = MARGIN_TOP + (currentLine * LINE_HEIGHT) + (LINE_HEIGHT / 2) + (h / 2);
 
-    // Check if we need to scroll
     if (cursor_y > EPD_HEIGHT - MARGIN_BOTTOM - LINE_HEIGHT)
     {
         scrollScreen();
         cursor_y = MARGIN_TOP + (currentLine * LINE_HEIGHT) + (LINE_HEIGHT / 2) + (h / 2);
-    }
-
-    if (showPrompt)
-    {
-        cursor_x = MARGIN_LEFT + BORDER_WIDTH; // Add border width to left margin
-        write_mode((GFXfont *)&ComicCode, PROMPT, &cursor_x, &cursor_y,
-                   framebuffer, WHITE_ON_BLACK, &props);
     }
 
     write_mode((GFXfont *)&ComicCode, text, &cursor_x, &cursor_y,
@@ -176,9 +156,7 @@ void setup()
 
     initializeDisplay();
     calculateTerminalDimensions();
-
     clearScreen();
-    writeLine("", true); // Just show the prompt
 
     Serial.println("Terminal ready!");
     Serial.println("Send text via Serial to display on the e-paper screen.");
