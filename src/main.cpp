@@ -8,42 +8,34 @@
 #include "ComicCode.h"
 
 // Configuration constants
-const int LINE_HEIGHT = 20; // Total height for each line
-const int MARGIN_LEFT = 10;
-const int MARGIN_RIGHT = 10;
-const int MARGIN_TOP = 16;
-const int MARGIN_BOTTOM = 16;
-const int BORDER_WIDTH = 2; // Width of the border in pixels
+const int LINE_HEIGHT = 20;
+const int BORDER_WIDTH = 20;
+const int PADDING = 5;
+const int MARGIN_LEFT = BORDER_WIDTH + PADDING;
+const int MARGIN_RIGHT = BORDER_WIDTH + PADDING;
+const int MARGIN_TOP = BORDER_WIDTH + PADDING * 2;
+const int MARGIN_BOTTOM = BORDER_WIDTH + PADDING * 2;
 
-// Terminal dimensions calculated in setup
 int TERM_ROWS = 0;
 int TERM_COLS = 0;
 
-// Global variables
 uint8_t *framebuffer = NULL;
 int currentLine = 0;
 bool displayNeedsPower = true;
 
-// Font properties
 FontProperties props = {
-    .fg_color = 0,          // Black text
-    .bg_color = 15,         // White background
-    .fallback_glyph = 0x3F, // '?' - fallback character
+    .fg_color = 0,
+    .bg_color = 15,
+    .fallback_glyph = 0x3F,
     .flags = DRAW_BACKGROUND};
 
 void drawBorder()
 {
-    int term_x = MARGIN_LEFT - BORDER_WIDTH;
-    int term_y = MARGIN_TOP - BORDER_WIDTH;
-    int term_width = EPD_WIDTH - (MARGIN_LEFT + MARGIN_RIGHT) + (2 * BORDER_WIDTH);
-    int term_height = EPD_HEIGHT - (MARGIN_TOP + MARGIN_BOTTOM) + (2 * BORDER_WIDTH);
-
+    int term_x = BORDER_WIDTH / 2;
+    int term_y = BORDER_WIDTH / 2;
+    int term_width = EPD_WIDTH - BORDER_WIDTH;
+    int term_height = EPD_HEIGHT - BORDER_WIDTH;
     epd_draw_rect(term_x, term_y, term_width, term_height, 0, framebuffer);
-
-    if (BORDER_WIDTH > 1)
-    {
-        epd_draw_rect(term_x + 1, term_y + 1, term_width - 2, term_height - 2, 0, framebuffer);
-    }
 }
 
 void calculateTerminalDimensions()
@@ -83,7 +75,10 @@ void initializeDisplay()
             delay(1000);
         }
     }
+    memset(framebuffer, 0xFF, EPD_WIDTH * EPD_HEIGHT / 2);
     epd_init();
+    epd_poweron();
+    epd_clear();
 }
 
 void clearScreen()
@@ -126,19 +121,17 @@ void scrollScreen()
 
 void writeLine(const char *text)
 {
-    int32_t cursor_x = MARGIN_LEFT;
+    if (currentLine >= TERM_ROWS)
+    {
+        scrollScreen();
+    }
 
+    int32_t cursor_x = PADDING;
     int32_t x1 = 0, y1 = 0, w = 0, h = 0;
     get_text_bounds((GFXfont *)&ComicCode, "Mg", &cursor_x, &y1,
                     &x1, &y1, &w, &h, &props);
 
-    int32_t cursor_y = MARGIN_TOP + (currentLine * LINE_HEIGHT) + (LINE_HEIGHT / 2) + (h / 2);
-
-    if (cursor_y > EPD_HEIGHT - MARGIN_BOTTOM - LINE_HEIGHT)
-    {
-        scrollScreen();
-        cursor_y = MARGIN_TOP + (currentLine * LINE_HEIGHT) + (LINE_HEIGHT / 2) + (h / 2);
-    }
+    int32_t cursor_y = (PADDING * 2) + (currentLine * LINE_HEIGHT) + (LINE_HEIGHT / 2) + (h / 2);
 
     write_mode((GFXfont *)&ComicCode, text, &cursor_x, &cursor_y,
                framebuffer, WHITE_ON_BLACK, &props);
@@ -160,9 +153,9 @@ void setup()
 
     Serial.println("Terminal ready!");
     Serial.println("Send text via Serial to display on the e-paper screen.");
+    writeLine("> ");
 
     epd_poweroff();
-    epd_poweroff_all();
     displayNeedsPower = true;
 }
 
@@ -173,16 +166,13 @@ void loop()
         if (displayNeedsPower)
         {
             epd_poweron();
-            delay(50);
             displayNeedsPower = false;
         }
 
         String line = Serial.readStringUntil('\n');
         writeLine(line.c_str());
 
-        delay(50);
         epd_poweroff();
-        epd_poweroff_all();
         displayNeedsPower = true;
     }
 }
