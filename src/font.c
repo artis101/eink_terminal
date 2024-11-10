@@ -4,7 +4,7 @@
 /******************************************************************************/
 
 #include "epd_driver.h"
-#include "zlib/zlib.h"
+#include <zlib/zlib.h>
 
 #include <esp_assert.h>
 #include <esp_heap_caps.h>

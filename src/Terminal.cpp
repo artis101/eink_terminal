@@ -72,10 +72,9 @@ void Terminal::init()
 
     display.init();
     calculateDimensions();
-    clearScreen();
+    clearScreen(); // This will now draw the prompt
 
     Serial.println("Terminal ready!");
-    writeLine("> ");
 
     display.powerOff();
 }
@@ -86,6 +85,8 @@ void Terminal::clearScreen()
     currentLine = 0;
     currentCol = 0;
     display.drawBorder(config.BORDER_WIDTH);
+    // Draw the prompt after clearing
+    writeLine("> ");
 }
 
 void Terminal::clearToEndOfScreen()
@@ -182,7 +183,8 @@ void Terminal::handleInput()
 {
     if (Serial.available())
     {
-        if (!display.isPowered())
+        bool wasPowered = display.isPowered();
+        if (!wasPowered)
         {
             display.powerOn();
         }
@@ -193,6 +195,10 @@ void Terminal::handleInput()
             parser.processChar(c);
         }
 
-        display.powerOff();
+        // Only power off if it wasn't powered before
+        if (!wasPowered)
+        {
+            display.powerOff();
+        }
     }
 }
